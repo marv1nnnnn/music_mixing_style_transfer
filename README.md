@@ -6,7 +6,10 @@ This repository includes source code and pre-trained models of the work *Music M
 [![arXiv](https://img.shields.io/badge/arXiv-2211.02247-b31b1b.svg)](https://arxiv.org/abs/2211.02247)
 [![Web](https://img.shields.io/badge/Web-Demo_Page-green.svg)](https://jhtonyKoo.github.io/MixingStyleTransfer/)
 [![Supplementary](https://img.shields.io/badge/Supplementary-Materials-white.svg)](https://tinyurl.com/4math4pm)
+[![HuggingFace](https://img.shields.io/badge/🤗-HuggingFace-yellow.svg)](https://huggingface.co/spaces/jhtonyKoo/music_mixing_style_transfer)
 
+## Hugging Face
+You can now run inference with your samples (or from YouTube) at [Hugging Face](https://huggingface.co/spaces/jhtonyKoo/music_mixing_style_transfer)!
 
 
 ## Pre-trained Models

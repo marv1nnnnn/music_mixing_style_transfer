@@ -21,3 +21,4 @@ torchvision==0.10.0
 torchmetrics==0.6.0
 torchtext==0.10.0
 demucs
+gradio>=3.40.1

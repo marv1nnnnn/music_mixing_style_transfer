@@ -93,9 +93,10 @@ def get_eq_matching(audio_t, ref_spec, sr=44100, n_fft=65536, hop_length=16384,
         diff_filter = scipy.signal.firwin2(ntaps,
                                            frq/np.max(frq),
                                            diff_eq,
-                                           nfreqs=None, window='hamming',
-                                           nyq=None, antisymmetric=False)
-
+                                           nfreqs=None,
+                                           window='hamming',
+                                           fs=2.0,  # Normalized frequency
+                                           antisymmetric=False)
 
         output = scipy.signal.filtfilt(diff_filter, 1, audio_t,
                                        axis=-1, padtype='odd', padlen=None,

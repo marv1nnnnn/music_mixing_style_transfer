@@ -48,16 +48,16 @@ def create_args(normalize_input=True, separation_model="mdx_extra"):
     args = Args()
     
     # directory paths
-    args.target_dir = './temp_data/'
-    args.output_dir = './temp_data/'
+    args.target_dir = os.path.join(os.getcwd(), 'temp_data')
+    args.output_dir = os.path.join(os.getcwd(), 'temp_data')
     args.input_file_name = 'input'
     args.reference_file_name = 'reference'
     args.reference_file_name_2interpolate = 'reference_B'
     
     # saved weights
-    args.ckpt_path_enc = default_ckpt_path_enc
-    args.ckpt_path_conv = default_ckpt_path_conv
-    args.precomputed_normalization_feature = default_norm_feature_path
+    args.ckpt_path_enc = os.path.abspath(default_ckpt_path_enc)
+    args.ckpt_path_conv = os.path.abspath(default_ckpt_path_conv)
+    args.precomputed_normalization_feature = os.path.abspath(default_norm_feature_path)
     
     # inference args
     args.sample_rate = 44100
@@ -89,15 +89,39 @@ def create_args(normalize_input=True, separation_model="mdx_extra"):
 def prepare_data_directory(input_audio, reference_audio):
     """Prepare data directory for processing"""
     # Create temp directories
-    temp_dir = os.path.join('./temp_data', f"temp_{int(time.time())}")
+    temp_dir = os.path.join(os.getcwd(), 'temp_data', f"temp_{int(time.time())}")
     os.makedirs(temp_dir, exist_ok=True)
     
     # Save input and reference files
     input_path = os.path.join(temp_dir, "input.wav")
     reference_path = os.path.join(temp_dir, "reference.wav")
     
-    sf.write(input_path, input_audio[0], input_audio[1], 'PCM_16')
-    sf.write(reference_path, reference_audio[0], reference_audio[1], 'PCM_16')
+    # Handle audio data format from Gradio
+    # Gradio returns a tuple of (sample_rate, data) for audio inputs
+    input_data = input_audio[1] if isinstance(input_audio[1], np.ndarray) else input_audio[1].numpy()
+    reference_data = reference_audio[1] if isinstance(reference_audio[1], np.ndarray) else reference_audio[1].numpy()
+    
+    # Ensure the data is in the correct format (samples, channels)
+    if input_data.ndim == 1:
+        input_data = input_data.reshape(-1, 1)
+    if reference_data.ndim == 1:
+        reference_data = reference_data.reshape(-1, 1)
+    
+    # If mono, duplicate to stereo
+    if input_data.shape[1] == 1:
+        input_data = np.tile(input_data, (1, 2))
+    if reference_data.shape[1] == 1:
+        reference_data = np.tile(reference_data, (1, 2))
+    
+    # Transpose if necessary (soundfile expects (samples, channels))
+    if input_data.shape[0] == 2:
+        input_data = input_data.T
+    if reference_data.shape[0] == 2:
+        reference_data = reference_data.T
+    
+    # Save the files
+    sf.write(input_path, input_data, input_audio[0], 'PCM_16')
+    sf.write(reference_path, reference_data, reference_audio[0], 'PCM_16')
     
     return temp_dir
 
@@ -106,47 +130,56 @@ def process_style_transfer(input_audio, reference_audio, use_interpolation=False
     if input_audio is None or reference_audio is None:
         return None, "Error: Please upload both input and reference audio files."
     
-    # Create args with default configuration
-    args = create_args(normalize_input=normalize_input, separation_model=separation_model)
-    
-    # Set interpolation if needed
-    args.interpolation = use_interpolation
-    
-    # Prepare data directory
-    temp_dir = prepare_data_directory(input_audio, reference_audio)
-    args.target_dir = temp_dir + '/'
-    args.output_dir = temp_dir + '/'
-    
-    progress(0.1, "Preparing audio files")
-    
-    # Initialize the style transfer model
-    progress(0.2, "Initializing style transfer model")
-    inference_style_transfer = Mixing_Style_Transfer_Inference(args)
-    
-    # Run inference
-    progress(0.4, "Running style transfer")
-    if args.interpolation:
-        inference_style_transfer.inference_interpolation()
-    else:
-        inference_style_transfer.inference()
-    
-    progress(0.9, "Processing complete")
-    
-    # Get result file
-    output_name_tag = 'output' if args.normalize_input else 'output_notnormed'
-    if args.interpolation:
-        output_name_tag = 'output_interpolation' if args.normalize_input else 'output_notnormed_interpolation'
-    
-    output_file = os.path.join(temp_dir, f"mixture_{output_name_tag}.wav")
-    
-    if os.path.exists(output_file):
-        # Load the output file
-        data, samplerate = sf.read(output_file)
-        progress(1.0, "Done")
-        return (data, samplerate), "Processing completed successfully!"
-    else:
-        progress(1.0, "Error")
-        return None, "Error: Style transfer processing failed. Output file not generated."
+    try:
+        # Create args with default configuration
+        args = create_args(normalize_input=normalize_input, separation_model=separation_model)
+        
+        # Set interpolation if needed
+        args.interpolation = use_interpolation
+        
+        # Prepare data directory
+        temp_dir = prepare_data_directory(input_audio, reference_audio)
+        args.target_dir = temp_dir
+        args.output_dir = temp_dir
+        
+        progress(0.1, "Preparing audio files")
+        
+        # Initialize the style transfer model
+        progress(0.2, "Initializing style transfer model")
+        inference_style_transfer = Mixing_Style_Transfer_Inference(args)
+        
+        # Run inference
+        progress(0.4, "Running style transfer")
+        if args.interpolation:
+            inference_style_transfer.inference_interpolation()
+        else:
+            inference_style_transfer.inference()
+        
+        progress(0.9, "Processing complete")
+        
+        # Get result file
+        output_name_tag = 'output' if args.normalize_input else 'output_notnormed'
+        if args.interpolation:
+            output_name_tag = 'output_interpolation' if args.normalize_input else 'output_notnormed_interpolation'
+        
+        output_file = os.path.join(temp_dir, f"mixture_{output_name_tag}.wav")
+        
+        if os.path.exists(output_file):
+            # Load the output file
+            data, samplerate = sf.read(output_file)
+            progress(1.0, "Done")
+            # Clean up temporary files
+            cleanup_temp_files()
+            return (samplerate, data), "Processing completed successfully!"
+        else:
+            progress(1.0, "Error")
+            return None, "Error: Style transfer processing failed. Output file not generated."
+            
+    except Exception as e:
+        import traceback
+        error_msg = f"Error during processing: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        return None, f"Error: {str(e)}"
 
 def cleanup_temp_files():
     """Clean up temporary files and directories"""
@@ -232,7 +265,7 @@ if __name__ == "__main__":
     
     # Create and launch the interface
     app = create_interface()
-    app.launch()
+    app.launch(share=True)
     
     # Clean up temporary files on exit
     cleanup_temp_files() 

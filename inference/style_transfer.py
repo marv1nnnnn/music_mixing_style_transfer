@@ -303,22 +303,12 @@ class Mixing_Style_Transfer_Inference:
 
     # save current inference arguments
     def save_args(self, params):
-        info = '\n[args]\n'
-        for sub_args in parser._action_groups:
-            if sub_args.title in ['positional arguments', 'optional arguments', 'options']:
-                continue
-            size_sub = len(sub_args._group_actions)
-            info += f'  {sub_args.title} ({size_sub})\n'
-            for i, arg in enumerate(sub_args._group_actions):
-                prefix = '-'
-                info += f'      {prefix} {arg.dest:20s}: {getattr(params, arg.dest)}\n'
-        info += '\n'
-
-        os.makedirs(self.output_dir, exist_ok=True)
-        record_path = f"{self.output_dir}style_transfer_inference_configurations.txt"
-        f = open(record_path, 'w')
-        np.savetxt(f, [info], delimiter=" ", fmt="%s")
-        f.close()
+        """Save arguments to a file"""
+        args_dict = vars(params)
+        os.makedirs(os.path.join(self.output_dir, 'args'), exist_ok=True)
+        with open(os.path.join(self.output_dir, 'args', 'args.txt'), 'w') as f:
+            for k, v in args_dict.items():
+                f.write(f'{k}: {v}\n')
 
 
 
